@@ -43,7 +43,7 @@ namespace System.Data.Entity.Migrations.Infrastructure
         {
             DebugCheck.NotNull(model);
 
-            _compiledModel = model.Compile();
+            _compiledModel = new DbCompiledModel(model);
             _connection = connection;
 
             using (var context = CreateContext())
