@@ -35,7 +35,6 @@ namespace System.Data.Entity.Infrastructure
         private readonly ICachedMetadataWorkspace _workspace;
 
         private readonly DbModelBuilder _cachedModelBuilder;
-        private readonly string _defaultSchema;
 
         // <summary>
         // For mocking.
@@ -44,17 +43,16 @@ namespace System.Data.Entity.Infrastructure
         {
         }
 
-        internal DbCompiledModel(CodeFirstCachedMetadataWorkspace workspace, DbModelBuilder cachedModelBuilder)
+        // <summary>
+        // Creates a model for the given EDM metadata model.
+        // </summary>
+        // <param name="model"> The EDM metadata model. </param>
+        internal DbCompiledModel(DbModel model)
         {
-            _workspace = workspace;
-            _cachedModelBuilder = cachedModelBuilder;
-            _defaultSchema = cachedModelBuilder.ModelConfiguration.DefaultSchema;
-        }
+            DebugCheck.NotNull(model);
 
-        internal DbCompiledModel(CodeFirstCachedMetadataWorkspace workspace, string defaultSchema)
-        {
-            _workspace = workspace;
-            _defaultSchema = defaultSchema;
+            _workspace = new CodeFirstCachedMetadataWorkspace(model.DatabaseMapping);
+            _cachedModelBuilder = model.CachedModelBuilder;
         }
 
         #endregion
@@ -81,7 +79,7 @@ namespace System.Data.Entity.Infrastructure
         // <returns> The default schema of the model. </returns>
         internal string DefaultSchema
         {
-            get { return _defaultSchema; }
+            get { return CachedModelBuilder.ModelConfiguration.DefaultSchema; }
         }
 
         #endregion

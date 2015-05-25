@@ -4,7 +4,6 @@ namespace System.Data.Entity.Internal
 {
     using System.Collections.Generic;
     using System.Data.Common;
-    using System.Data.Entity.Core.Mapping;
     using System.Data.Entity.Core.Metadata.Edm;
     using System.Data.Entity.Infrastructure;
     using System.Data.Entity.ModelConfiguration.Edm;
@@ -13,8 +12,6 @@ namespace System.Data.Entity.Internal
     using System.Diagnostics;
     using System.Linq;
     using System.Reflection;
-    using System.Xml;
-    using System.Xml.Linq;
 
     // <summary>
     // Implements ICachedMetadataWorkspace for a Code First model.
@@ -28,13 +25,21 @@ namespace System.Data.Entity.Internal
         private readonly DbProviderInfo _providerInfo;
         private readonly string _defaultContainerName;
 
-        private CodeFirstCachedMetadataWorkspace(MetadataWorkspace metadataWorkspace, 
-            IEnumerable<Assembly> assemblies, DbProviderInfo providerInfo, string defaultContainerName)
+        // <summary>
+        // Builds and stores the workspace based on the given code first configuration.
+        // </summary>
+        // <param name="databaseMapping"> The code first EDM model. </param>
+        public CodeFirstCachedMetadataWorkspace(DbDatabaseMapping databaseMapping)
         {
-            _metadataWorkspace = metadataWorkspace;
-            _assemblies = assemblies;
-            _providerInfo = providerInfo;
-            _defaultContainerName = defaultContainerName;
+            DebugCheck.NotNull(databaseMapping);
+
+            _providerInfo = databaseMapping.ProviderInfo;
+            _metadataWorkspace = databaseMapping.ToMetadataWorkspace();
+            _assemblies = databaseMapping.Model.GetClrTypes().Select(t => t.Assembly()).Distinct().ToList();
+
+            Debug.Assert(databaseMapping.Model.Containers.Count() == 1, "Expecting Code First to create only one container.");
+
+            _defaultContainerName = databaseMapping.Model.Containers.First().Name;
         }
 
         #endregion
@@ -85,31 +90,6 @@ namespace System.Data.Entity.Internal
         public DbProviderInfo ProviderInfo
         {
             get { return _providerInfo; }
-        }
-
-        public static CodeFirstCachedMetadataWorkspace Create(DbDatabaseMapping databaseMapping)
-        {
-            var conceptualModel = databaseMapping.Model;
-
-            return new CodeFirstCachedMetadataWorkspace(
-                databaseMapping.ToMetadataWorkspace(),
-                conceptualModel.GetClrTypes().Select(t => t.Assembly()).Distinct().ToArray(),
-                databaseMapping.ProviderInfo,
-                conceptualModel.Container.Name);
-        }
-
-        public static CodeFirstCachedMetadataWorkspace Create(
-            StorageMappingItemCollection mappingItemCollection, DbProviderInfo providerInfo)
-        {
-            var conceptualModel = mappingItemCollection.EdmItemCollection;
-            var entityClrTypes = conceptualModel.GetItems<EntityType>().Select(et => et.GetClrType());
-            var complexClrTypes = conceptualModel.GetItems<ComplexType>().Select(ct => ct.GetClrType());
-
-            return new CodeFirstCachedMetadataWorkspace(
-                mappingItemCollection.Workspace,
-                entityClrTypes.Union(complexClrTypes).Select(t => t.Assembly()).Distinct().ToArray(),
-                providerInfo,
-                conceptualModel.GetItems<EntityContainer>().Single().Name);
         }
 
         #endregion
